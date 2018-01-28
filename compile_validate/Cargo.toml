@@ -1,0 +1,10 @@
+[package]
+name = "compile_validate"
+version = "0.1.0"
+authors = ["Michael Gattozzi <mgattozzi@gmail.com>"]
+
+[workspace]
+members = ["validate_macros"]
+
+[dependencies]
+validate_macros = { path = "validate_macros" }

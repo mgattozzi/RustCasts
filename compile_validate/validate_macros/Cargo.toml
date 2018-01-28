@@ -1,0 +1,14 @@
+[package]
+name = "validate_macros"
+version = "0.1.0"
+authors = ["Michael Gattozzi <mgattozzi@gmail.com>"]
+
+[dependencies]
+quote = "*"
+serde = "*"
+serde_json = "*"
+syn = "*"
+proc-macro2 = "*"
+
+[lib]
+proc-macro = true
