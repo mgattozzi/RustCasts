@@ -8,7 +8,6 @@ quote = "*"
 serde = "*"
 serde_json = "*"
 syn = "*"
-proc-macro2 = "*"
 
 [lib]
 proc-macro = true

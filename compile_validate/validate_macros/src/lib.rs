@@ -1,45 +1,38 @@
-extern crate quote;
+#[macro_use] extern crate quote;
 extern crate proc_macro;
-extern crate proc_macro2;
 extern crate serde;
 extern crate serde_json;
 extern crate syn;
 
-use std::str::FromStr;
 use std::fs::File;
-use std::io::Read;
 
 use proc_macro::TokenStream;
-use proc_macro2::TokenNode;
-use quote::ToTokens;
-use serde_json::Value;
-use syn::DeriveInput;
+use serde::de::IgnoredAny;
+use syn::{DeriveInput, Lit, Meta, MetaNameValue};
 
-#[proc_macro_derive(Validate, attributes(ValidatePath))]
+#[proc_macro_derive(Validate, attributes(path))]
 pub fn validate_file(input: TokenStream) -> TokenStream {
-    // Parse the string representation
-    let mut ast: DeriveInput = syn::parse(input)
-                                   .expect("validate_macros: Failed to parse Derive Input");
+    // Parse tokens of the input struct
+    let ast: DeriveInput = syn::parse(input)
+                               .expect("validate_macros: Failed to parse Derive Input");
 
-    let attr = ast.attrs.pop().unwrap();
-    attr.tts
-        .into_iter()
-        .skip(1)
-        .for_each(|tt| {
-            if let TokenNode::Literal(lit) = tt.kind {
-                let mut path = lit.to_string();
-                let _ = path.pop();
-                path.remove(0);
-                let mut file = File::open(&path).unwrap();
-                let mut buffer = String::new();
-                let _ = file.read_to_string(&mut buffer);
+    // Interpret unstructured tokens of the `#[path = $path]` attribute into a
+    // structured meta-item representation
+    let meta = ast.attrs[0].interpret_meta().unwrap();
 
-                let _: Value = serde_json::from_str(&buffer).unwrap();
-            } else {
-                panic!("validate_macros: Path not passed int to Validate Macro");
-            }
-        });
+    // Expect the `$path` to be a string literal
+    let path = match meta {
+        Meta::NameValue(MetaNameValue { lit: Lit::Str(s), .. }) => s.value(),
+        _ => panic!("validate_macros: Expected #[path = \"...\"]"),
+    };
 
-    TokenStream::from_str(&"".into_tokens().to_string())
-                .expect("validate_macros: Failed to generate blank TokenStream")
+    // Validate JSON without parsing it into any particular data structure
+    let file = File::open(&path).unwrap_or_else(|err| panic!("{}", err));
+    match serde_json::from_reader(file) {
+        Ok(IgnoredAny) => {}
+        Err(err) => panic!("Failed to parse {}: {}", path, err),
+    }
+
+    // If successful, produce empty token stream as output
+    quote!().into()
 }
